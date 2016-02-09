@@ -1,19 +1,13 @@
 package main
 
 import (
-	"bufio"
-	"encoding/json"
 	"fmt"
-	"io"
+	"helper"
 	"io/ioutil"
 	"log"
 	"net"
 	"strings"
 )
-
-type Message struct {
-	Content, Command string
-}
 
 func main() {
 	listener, err := net.Listen("tcp", "localhost:8000")
@@ -33,31 +27,31 @@ func main() {
 
 func handleConn(c net.Conn) {
 	defer c.Close()
-	input := bufio.NewScanner(c)
-	for input.Scan() {
-		in := input.Bytes()
-		fmt.Fprintln(c, evalInput(in))
-	}
+	message := helper.DecodeMessage(c)
+	evalInput(message, c)
 }
 
-func evalInput(input []byte) string {
-	m := decodeInput(input)
-	if m.Command == "List" {
-		return getFiles()
+func evalInput(message helper.Message, c net.Conn) string {
+	if message.Command == "List" {
+		files := getFiles()
+		mess := helper.CreateMessage([]byte(files), "List", "")
+		fmt.Println(mess)
+		helper.EncodeMessage(*mess, c)
+	} else if message.Command == "Upload" {
+		name := fmt.Sprintf("./%s/%s", "serverFiles", message.FileName)
+		helper.WriteFile(name, message.Content)
+	} else if message.Command == "Download" {
+		file, err := helper.GetFile(message.FileName)
+		if err != nil {
+			mess := helper.CreateMessage(nil, "Download", "")
+			helper.EncodeMessage(*mess, c)
+		} else {
+			mess := helper.CreateMessage(file, "Download", message.FileName)
+			helper.EncodeMessage(*mess, c)
+		}
+
 	}
 	return "command not found"
-}
-
-func decodeInput(input []byte) Message {
-	jsonStream := string(input)
-	dec := json.NewDecoder(strings.NewReader(jsonStream))
-	var m Message
-	if err := dec.Decode(&m); err == io.EOF {
-		fmt.Print("")
-	} else if err != nil {
-		log.Fatal(err)
-	}
-	return m
 }
 
 func getFiles() string {
@@ -68,5 +62,5 @@ func getFiles() string {
 		fileList = append(fileList, fil)
 	}
 
-	return strings.Join(fileList, " ")
+	return strings.Join(fileList, "")
 }

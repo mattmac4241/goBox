@@ -31,27 +31,17 @@ func handleConn(c net.Conn) {
 	evalInput(message, c)
 }
 
-func evalInput(message helper.Message, c net.Conn) string {
-	if message.Command == "List" {
-		files := getFiles()
-		mess := helper.CreateMessage([]byte(files), "List", "")
-		fmt.Println(mess)
-		helper.EncodeMessage(*mess, c)
-	} else if message.Command == "Upload" {
-		name := fmt.Sprintf("./%s/%s", "serverFiles", message.FileName)
-		helper.WriteFile(name, message.Content)
-	} else if message.Command == "Download" {
-		file, err := helper.GetFile(message.FileName)
-		if err != nil {
-			mess := helper.CreateMessage(nil, "Download", "")
-			helper.EncodeMessage(*mess, c)
-		} else {
-			mess := helper.CreateMessage(file, "Download", message.FileName)
-			helper.EncodeMessage(*mess, c)
-		}
-
+func evalInput(message helper.Message, c net.Conn) {
+	switch message.Command {
+	case "List":
+		list(c)
+	case "Upload":
+		upload(message, c)
+	case "Download":
+		download(message, c)
+	default:
+		fmt.Println("")
 	}
-	return "command not found"
 }
 
 func getFiles() string {
@@ -63,4 +53,26 @@ func getFiles() string {
 	}
 
 	return strings.Join(fileList, "")
+}
+
+func list(c net.Conn) {
+	files := getFiles()
+	mess := helper.CreateMessage([]byte(files), "List", "")
+	helper.EncodeMessage(*mess, c)
+}
+
+func upload(message helper.Message, c net.Conn) {
+	name := fmt.Sprintf("./%s/%s", "serverFiles", message.FileName)
+	helper.WriteFile(name, message.Content)
+}
+
+func download(message helper.Message, c net.Conn) {
+	file, err := helper.GetFile(message.FileName)
+	if err != nil {
+		mess := helper.CreateMessage(nil, "Download", "")
+		helper.EncodeMessage(*mess, c)
+	} else {
+		mess := helper.CreateMessage(file, "Download", message.FileName)
+		helper.EncodeMessage(*mess, c)
+	}
 }

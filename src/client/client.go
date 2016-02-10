@@ -26,6 +26,7 @@ func upload(fileName string) {
 		if err != nil {
 			fmt.Println(err)
 		} else {
+			fmt.Println(len(l))
 			message := helper.CreateMessage(l, "Upload", fileName)
 			connection := getConnection("localhost", "8000")
 			encoder := gob.NewEncoder(connection)

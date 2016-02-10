@@ -1,9 +1,10 @@
 package helper
 
 import (
+	"bufio"
 	"encoding/gob"
 	"errors"
-	"io/ioutil"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -15,13 +16,27 @@ type Message struct {
 	FileName string
 }
 
-//retrieve a file, check if it is there and then get body of file
 func GetFile(file string) ([]byte, error) {
-	body, err := ioutil.ReadFile(file)
+	var content []byte
+	f, err := os.Open(file)
 	if err != nil {
 		return nil, errors.New("Failed to open file")
 	}
-	return body, nil
+	r := bufio.NewReader(f)
+	buf := make([]byte, 2048)
+	for {
+		// read a chunk
+		n, err := r.Read(buf)
+		if err != nil && err != io.EOF {
+			panic(err)
+		}
+		content = append(content, buf[:n]...)
+		if n == 0 {
+			break
+		}
+	}
+	return content, nil
+
 }
 
 func WriteFile(fileName string, content []byte) {
